@@ -82,35 +82,31 @@ function Dump:Decompile(script)
     }
 end
 
-function Dump:Script(script, Base, RootInstance)
+function Dump:Script(script, category)
     local Result = self:Decompile(script)
-
     if Result.Success and Result.Output ~= "Unknown Bytecode" then
         Success += 1
 
-        local RelativePath = ""
-        local Current = script.Parent
-        while Current and Current ~= RootInstance do
-            RelativePath = Current.Name .. "/" .. RelativePath
-            Current = Current.Parent
+        local Relative = script:GetFullName():gsub(category .. ".", "")
+        local RelativePath = Relative:gsub("%.", "/")
+
+        local Filename = Path .. "/" .. category .. "/" .. RelativePath .. ".lua"
+
+        local FolderPath = Filename:match("(.+)/[^/]+%.lua$")
+        if not isfolder(FolderPath) then
+            makefolder(FolderPath)
         end
 
-        local FullFolder = Path .. "/" .. Base .. "/" .. RelativePath
-        if not isfolder(FullFolder) then
-            makefolder(FullFolder)
-        end
-
-        local FileName = script.Name .. ".lua"
-        writefile(FullFolder .. "/" .. FileName, Result.Output)
+        writefile(Filename, Result.Output)
     else
         Fail += 1
     end
 end
 
-function Dump:Service(Base, Path, RootInstance)
-    for _, script in pairs(Path) do
+function Dump:Service(category, path)
+    for _, script in pairs(path) do
         if script:IsA("LocalScript") or script:IsA("ModuleScript") then
-            self:Script(script, Base, RootInstance)
+            self:Script(script, category)
         end
     end
 end
@@ -122,7 +118,7 @@ task.spawn(function()
             makefolder(Path .. "/" .. category)
 
             if typeof(data.Path) == "Instance" then
-                Dump:Service(category, data.Path:GetDescendants(), data.Path)
+                Dump:Service(category, data.Path:GetDescendants())
             elseif typeof(data.Path) == "table" then
                 Dump:Service(category, data.Path)
             end
